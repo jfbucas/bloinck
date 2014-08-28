@@ -8,7 +8,7 @@ debug() {
 sum_cmd() {
 	sha256sum | tr -d ' -'
 }
-SUM_EMPTY="$(dd if=/dev/null | sum_cmd)"
+SUM_EMPTY="$(dd if=/dev/null 2> /dev/null | sum_cmd)"
 
 # PAD
 PAD="000000000"
