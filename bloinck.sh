@@ -14,10 +14,14 @@ SUM_EMPTY="$(dd if=/dev/null 2> /dev/null | sum_cmd)"
 PAD="000000000"
 
 # In Megabytes
-MAX_BLOCK_SIZE="9"
-MIN_BLOCK_SIZE="1"
+MAX_BLOCK_SIZE="100"
+MIN_BLOCK_SIZE="10"
 
 DEV="$1"
+if [ ! -e "$DEV" ]; then
+	echo "Cannot backup a non existing file"
+	exit 1
+fi
 DEV_NICE_NAME="${DEV//\//-}"
 
 DEST="backup"
