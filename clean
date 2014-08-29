@@ -1,0 +1,16 @@
+#!/bin/bash
+
+SCRIPTDIR="$(dirname "$0")"
+cd "$SCRIPTDIR"
+
+DAYS=40
+DELETE=""
+
+if [ "$1" == "--real" ]; then
+	DELETE="-delete"
+fi
+
+
+for d in kvm*; do
+	find "$d"  \( -ctime +$DAYS -or -mtime +$DAYS \) $DELETE
+done
