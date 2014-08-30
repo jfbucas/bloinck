@@ -1,0 +1,130 @@
+#!/bin/bash
+#
+# This script performs a full backup + LZMA compression of all DIAS Virtual Machines
+# it connects to KVM servers with SSH key authentication
+# the keys on the remote hosts are propagated using Puppet
+#
+# Version 0.1 - Jef Bucas 2013-03-21 
+# Version 0.2 - Jef Bucas 2014-08-29 
+
+SCRIPTDIR="$(dirname "$0")"
+cd "$SCRIPTDIR"
+
+if [ -z "$@" ]; then
+	echo "Please provide the list of KVM host on which to perform the backups"
+	echo "Usage: $0 host1 [host2] [...]"
+	exit 1
+fi
+
+BLACK_LIST="$(cat black_list)"
+BACKUPDIR="$SCRIPTDIR"
+
+# CMD
+SSH="ssh -4 -c arcfour"
+PLZIP="plzip -3 -q -c -n"
+SUMCMD='sha256sum'
+
+# PAD for device blocks
+PAD="000000000"
+
+# In Megabytes
+MAX_BLOCK_SIZE="100"
+MIN_BLOCK_SIZE="10"
+SIZE="$MAX_BLOCK_SIZE"
+
+
+# The backup itself
+do_full_backup() {
+	echo -n "$1 : "
+	$SSH $MACHINE dd status=noxfer if=$1 bs=50M \| nice -n 15 $PLZIP $NB_CORES | dd status=noxfer of="$DESTBDEV/$TODAY.lzma" bs=50M
+	date
+}
+
+# The other backup itself
+# This slices up the DEV in chunks of $SIZE and only zip+transfers if there's a difference with the last backup
+do_bloinck_backup() {
+
+	SUM_EMPTY="$($SSH $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD \| tr -d '[ -]')"
+
+	mkdir -p "$DESTBDEV/$TODAY"
+	CHUNK=0
+	SUM=""
+	while [ "$SUM" != "$SUM_EMPTY" ]; do
+
+		CHUNK_PAD="${PAD:${#CHUNK}}""$CHUNK"
+
+		SUM="$($SSH $MACHINE dd status=noxfer if="$DEV" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \| $SUMCMD \| tr -d '[ -]')"
+		
+		LZ="$DESTBDEV/$TODAY/$CHUNK_PAD""_""$SUM"".lzma"
+		
+		LAST="$(ls -1t "$DESTBDEV"/*/"$CHUNK_PAD""_""$SUM"".lzma" 2> /dev/null | head -1)"
+		if [ -n "$LAST" ]; then
+			# Hard link if it is identical
+			ln "$LAST" "$LZ"
+		else
+			# Transfer the new chunk
+			$SSH $MACHINE \
+				dd status=noxfer if="$DEV" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
+				nice -n 15 $PLZIP $NB_CORES |\
+				dd status=noxfer of="$LZ" bs=5M 2\> /dev/null
+		fi
+
+		(( CHUNK ++ ))
+	done
+}
+
+
+
+
+
+# Loop through all the KVM hosts provided
+for MACHINE in $@; do
+
+	(
+	ping -c 1 -W 2 -q $MACHINE > /dev/null 2>&1
+	[ $? != 0 ] && echo "Skipping unpingable $MACHINE" && continue
+
+	# |CPUs| -1 (to leave some room for the VMs
+	NB_CORES="$($SSH $MACHINE cat /proc/cpuinfo | grep processor | tail -1 | tr -d '[a-z: \t]')"
+
+	# List virtual machines
+	VM_LIST=$($SSH $MACHINE virsh -q list | sed -e "s/[ 0-9]*\([^ ]*\) .*/\1/g")
+	for v in $VM_LIST; do
+		# List block devices used by virtual machine $v
+		BLK_DEV=$($SSH $MACHINE virsh domblklist $v | grep -v -- "^---\|^Target" | sed -e "s/.* \([^ ]*\)/\1/g" | grep -v -- "^-" )
+
+		for b in $BLK_DEV; do
+			# Black list
+			skip=""
+			for black in $BLACK_LIST; do
+				if [ -n "$(echo "$b" | grep "$black" )" ]; then
+					skip="YES"
+				fi
+			done
+			[ -n "$skip" ] && continue
+
+			DESTMACHINE="$BACKUPDIR/"${MACHINE}"/"
+			bdev="${b//\/dev\/}"
+			DESTBDEV=$DESTMACHINE"${bdev//\//_}/"
+			mkdir -p $DESTBDEV
+
+			# Create a snapshot of the block device to avoid FS corruptions
+			bsnapshot="$b-snapshot-$TODAY"
+			$SSH $MACHINE lvcreate -s -L10G -n $(basename $bsnapshot) $bdev
+			
+			# Perform a full backup + LZMA compression on the remote host
+			if [ $? != 0 ]; then
+				# backup of the live block device if for some reason the snapshot is not available
+				do_full_backup $b
+			else
+				# Backup of the snapshot
+				do_full_backup $bsnapshot
+
+				# Remove the snapshot
+				$SSH $MACHINE lvremove -f $bsnapshot
+			fi
+		done
+	done
+	) &
+done
+	
