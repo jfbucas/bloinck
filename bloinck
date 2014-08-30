@@ -53,7 +53,7 @@ do_bloinck_backup() {
 
 		CHUNK_PAD="${PAD:${#CHUNK}}""$CHUNK"
 
-		SUM="$($SSH $MACHINE dd status=noxfer if="$DEV" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \| $SUMCMD | tr -d '[ -]')"
+		SUM="$($SSH $MACHINE dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \| $SUMCMD | tr -d '[ -]')"
 		
 		LZ="$DESTBDEV/$TODAY/$CHUNK_PAD""_""$SUM"".lzma"
 		
@@ -64,7 +64,7 @@ do_bloinck_backup() {
 		else
 			# Transfer the new chunk
 			$SSH $MACHINE \
-				dd status=noxfer if="$DEV" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
+				dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
 				nice -n 15 $PLZIP $NB_CORES |\
 				dd status=noxfer of="$LZ" bs=5M 2> /dev/null
 		fi
