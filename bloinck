@@ -135,7 +135,7 @@ for HOST in $@; do
 	TODAY="$(date +%Y-%m-%d__%H-%M-%S)"
 
 	MACHINE="${HOST%%:*}"
-	MACHINEBLOCK="${HOST##*:*}"
+	MACHINEBLOCK="${HOST##*:}"
 
 	ping -c 1 -W 2 -q $MACHINE > /dev/null 2>&1
 	[ $? != 0 ] && echo "Skipping unpingable $MACHINE" && continue
