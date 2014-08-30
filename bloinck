@@ -12,7 +12,7 @@ cd "$SCRIPTDIR"
 
 if [ -z "$@" ]; then
 	echo "Please provide the list of KVM host on which to perform the backups"
-	echo "Usage: $0 host1 [host2] [...]"
+	echo "Usage: $0 host1[:kvm] [host2:/dev/sda1] [...]"
 	exit 1
 fi
 
@@ -76,12 +76,66 @@ do_bloinck_backup() {
 
 
 
+do_block_device() {
 
-# Loop through all the KVM hosts provided
-for MACHINE in $@; do
+	b=$1
+
+	DESTMACHINE="$BACKUPDIR/"${MACHINE}"/"
+	bdev="${b//\/dev\/}"
+	DESTBDEV=$DESTMACHINE"${bdev//\//_}/"
+	mkdir -p $DESTBDEV
+
+	# Create a snapshot of the block device to avoid FS corruptions
+	bsnapshot="$b-snapshot-$TODAY"
+	$SSH $MACHINE lvcreate -s -L10G -n $(basename $bsnapshot) $bdev
+	
+	# Perform a full backup + LZMA compression on the remote host
+	if [ $? != 0 ]; then
+		# backup of the live block device if for some reason the snapshot is not available
+		do_bloinck_backup $b
+	else
+		# Backup of the snapshot
+		do_bloinck_backup $bsnapshot
+
+		# Remove the snapshot
+		$SSH $MACHINE lvremove -f $bsnapshot
+	fi
+}
+
+do_virtual_machines() {
+
+	# List virtual machines
+	VM_LIST=$($SSH $MACHINE virsh -q list | sed -e "s/[ 0-9]*\([^ ]*\) .*/\1/g")
+	for v in $VM_LIST; do
+		# List block devices used by virtual machine $v
+		BLK_DEV=$($SSH $MACHINE virsh domblklist $v | grep -v -- "^---\|^Target" | sed -e "s/.* \([^ ]*\)/\1/g" | grep -v -- "^-" )
+
+		for blk in $BLK_DEV; do
+			# Black list
+			skip=""
+			for black in $BLACK_LIST; do
+				if [ -n "$(echo "$blk" | grep "$black" )" ]; then
+					skip="YES"
+				fi
+			done
+			[ -n "$skip" ] && continue
+
+			do_block_device $blk
+
+		done
+	done
+
+}
+
+
+# Loop through all the hosts provided
+for HOST in $@; do
 
 	(
 	TODAY="$(date +%Y-%m-%d__%H-%M-%S)"
+
+	MACHINE="${HOST%%:*}"
+	MACHINEBLOCK="${HOST##*:*}"
 
 	ping -c 1 -W 2 -q $MACHINE > /dev/null 2>&1
 	[ $? != 0 ] && echo "Skipping unpingable $MACHINE" && continue
@@ -90,44 +144,16 @@ for MACHINE in $@; do
 	NB_CORES="$($SSH $MACHINE cat /proc/cpuinfo | grep processor | tail -1 | tr -d '[a-z: \t]')"
 
 
-	# List virtual machines
-	VM_LIST=$($SSH $MACHINE virsh -q list | sed -e "s/[ 0-9]*\([^ ]*\) .*/\1/g")
-	for v in $VM_LIST; do
-		# List block devices used by virtual machine $v
-		BLK_DEV=$($SSH $MACHINE virsh domblklist $v | grep -v -- "^---\|^Target" | sed -e "s/.* \([^ ]*\)/\1/g" | grep -v -- "^-" )
+	case $MACHINEBLOCK in
+		"" | "kvm" )
+			do_virtual_machines
+			;;
 
-		for b in $BLK_DEV; do
-			# Black list
-			skip=""
-			for black in $BLACK_LIST; do
-				if [ -n "$(echo "$b" | grep "$black" )" ]; then
-					skip="YES"
-				fi
-			done
-			[ -n "$skip" ] && continue
-
-			DESTMACHINE="$BACKUPDIR/"${MACHINE}"/"
-			bdev="${b//\/dev\/}"
-			DESTBDEV=$DESTMACHINE"${bdev//\//_}/"
-			mkdir -p $DESTBDEV
-
-			# Create a snapshot of the block device to avoid FS corruptions
-			bsnapshot="$b-snapshot-$TODAY"
-			$SSH $MACHINE lvcreate -s -L10G -n $(basename $bsnapshot) $bdev
-			
-			# Perform a full backup + LZMA compression on the remote host
-			if [ $? != 0 ]; then
-				# backup of the live block device if for some reason the snapshot is not available
-				do_bloinck_backup $b
-			else
-				# Backup of the snapshot
-				do_bloinck_backup $bsnapshot
-
-				# Remove the snapshot
-				$SSH $MACHINE lvremove -f $bsnapshot
-			fi
-		done
-	done
+		* )
+			do_block_device $MACHINEBLOCK
+			;;
+	esac
+	
 	) &
 done
 	
