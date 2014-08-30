@@ -115,10 +115,10 @@ for MACHINE in $@; do
 			# Perform a full backup + LZMA compression on the remote host
 			if [ $? != 0 ]; then
 				# backup of the live block device if for some reason the snapshot is not available
-				do_full_backup $b
+				do_bloinck_backup $b
 			else
 				# Backup of the snapshot
-				do_full_backup $bsnapshot
+				do_bloinck_backup $bsnapshot
 
 				# Remove the snapshot
 				$SSH $MACHINE lvremove -f $bsnapshot
