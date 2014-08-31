@@ -44,7 +44,7 @@ do_full_backup() {
 # This slices up the DEV in chunks of $SIZE and only zip+transfers if there's a difference with the last backup
 do_bloinck_backup() {
 
-	SUM_EMPTY="$($SSH $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d '[ -]')"
+	SUM_EMPTY="$($SSH $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 
 	mkdir -p "$DESTBDEV/$TODAY"
 	CHUNK=0
@@ -53,7 +53,7 @@ do_bloinck_backup() {
 
 		CHUNK_PAD="${PAD:${#CHUNK}}""$CHUNK"
 
-		SUM="$($SSH $MACHINE dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \| $SUMCMD | tr -d '[ -]')"
+		SUM="$($SSH $MACHINE dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 		
 		LZ="$DESTBDEV/$TODAY/$CHUNK_PAD""_""$SUM"".lzma"
 		
