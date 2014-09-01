@@ -46,6 +46,7 @@ do_bloinck_backup() {
 
 	SUM_EMPTY="$($SSH $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 
+	TODAY="$(date +%Y-%m-%d__%H-%M-%S)"
 	mkdir -p "$DESTBDEV/$TODAY"
 	CHUNK=0
 	SUM=""
@@ -86,7 +87,7 @@ do_block_device() {
 	mkdir -p $DESTBDEV
 
 	# Create a snapshot of the block device to avoid FS corruptions
-	bsnapshot="$b-snapshot-$TODAY"
+	bsnapshot="$b-snapshot-$(date +%Y-%m-%d__%H-%M-%S)"
 	$SSH $MACHINE lvcreate -s -L10G -n $(basename $bsnapshot) $bdev
 	
 	# Perform a full backup + LZMA compression on the remote host
@@ -132,7 +133,6 @@ do_virtual_machines() {
 for HOST in $@; do
 
 	(
-	TODAY="$(date +%Y-%m-%d__%H-%M-%S)"
 
 	MACHINE="${HOST%%:*}"
 	MACHINEBLOCK="${HOST##*:}"
