@@ -44,6 +44,7 @@ for BLOCK_FILE in "$DEV_SNAPSHOT"/*".lzma"; do
 
 		if [ -n "$RENAME" ]; then
 			mv "$BLOCK_FILE" "$BLOCK_FILE.incorrect"
+			$BLOCK_FILE="$BLOCK_FILE.incorrect"
 		fi
 
 		DEV_FOLDER="$(dirname "$DEV_SNAPSHOT")"
