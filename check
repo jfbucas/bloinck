@@ -6,6 +6,7 @@ debug() {
 
 SUMCMD='sha256sum'
 DELETE=""
+RENAME="yes"
 
 while [ -n "$1" ]; do
 	case "$1" in
@@ -22,7 +23,7 @@ while [ -n "$1" ]; do
 done
 
 
-for BLOCK_FILE in "$DEV_SNAPSHOT"/*; do
+for BLOCK_FILE in "$DEV_SNAPSHOT"/*".lzma"; do
 
 	F="$(basename "$BLOCK_FILE" ".lzma")"
 	FILE_PAD="${F%%_*}"
@@ -41,8 +42,12 @@ for BLOCK_FILE in "$DEV_SNAPSHOT"/*; do
 	if [ ! -z "$ERROR" ]; then
 		echo "$BLOCK_FILE - $ERROR"
 
+		if [ -n "$RENAME" ]; then
+			mv "$BLOCK_FILE" "$BLOCK_FILE.incorrect"
+		fi
+
 		DEV_FOLDER="$(dirname "$DEV_SNAPSHOT")"
-		find "$DEV_FOLDER" -xdev -samefile "$BLOCK_FILE"
+		find "$DEV_FOLDER" -xdev -samefile "$BLOCK_FILE" \! -name "*.lzma.incorrect" $DELETE
 	fi
 
 done
