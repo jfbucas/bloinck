@@ -10,10 +10,10 @@ if [ ! -d "$DEV_SNAPSHOT" ]; then
 	exit 1
 fi
 
+# TODO: we should check that we have all the chuncks before starting to decompress
+# 
 
-for BLOCK_FILE in "$DEV_SNAPSHOT"/*; do
-
-	dd status=noxfer if="$BLOCK_FILE" bs=5M 2> /dev/null |\
-		plzip -d -c
+for BLOCK_FILE in "$DEV_SNAPSHOT"/*".lzma"; do
+	plzip -d -c "$BLOCK_FILE"
 done
 
