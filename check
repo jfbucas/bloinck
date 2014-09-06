@@ -24,13 +24,12 @@ for BLOCK_FILE in "$DEV_SNAPSHOT"/*; do
 	if [ -z "$FILE_SUM" ]; then ERROR="$ERROR No File Sum"; fi
 
 	if [ -z "$ERROR" ]; then
-		SUM="$(dd status=noxfer if="$BLOCK_FILE" bs=5M 2> /dev/null |\
-			plzip -d -c | $SUMCMD | tr -d ' -')"
+		SUM="$(plzip -d -c "$BLOCK_FILE" | $SUMCMD | tr -d ' -')"
 
 		if [ "$SUM" != "$FILE_SUM" ]; then ERROR="$ERROR No File Sum"; fi
 	fi
 
-	if [ -z "$ERROR" ]; then
+	if [ ! -z "$ERROR" ]; then
 		echo "$BLOCK_FILE - $ERROR"
 	fi
 
