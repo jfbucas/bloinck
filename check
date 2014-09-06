@@ -5,12 +5,21 @@ debug() {
 }
 
 SUMCMD='sha256sum'
+DELETE=""
 
-DEV_SNAPSHOT="$1"
-if [ ! -d "$DEV_SNAPSHOT" ]; then
-	echo "Cannot check un-existing snapshot"
-	exit 1
-fi
+while [ -n "$1" ]; do
+	case "$1" in
+		"--delete" ) RENAME=""; DELETE="-delete" ;;
+		* )
+			DEV_SNAPSHOT="$1"
+			if [ ! -d "$DEV_SNAPSHOT" ]; then
+				echo "Cannot check un-existing snapshot"
+				exit 1
+			fi
+		;;
+	esac
+	shift
+done
 
 
 for BLOCK_FILE in "$DEV_SNAPSHOT"/*; do
@@ -26,11 +35,14 @@ for BLOCK_FILE in "$DEV_SNAPSHOT"/*; do
 	if [ -z "$ERROR" ]; then
 		SUM="$(plzip -d -c "$BLOCK_FILE" | $SUMCMD | tr -d ' -')"
 
-		if [ "$SUM" != "$FILE_SUM" ]; then ERROR="$ERROR No File Sum"; fi
+		if [ "$SUM" != "$FILE_SUM" ]; then ERROR="$ERROR Incorrect Sum"; fi
 	fi
 
 	if [ ! -z "$ERROR" ]; then
 		echo "$BLOCK_FILE - $ERROR"
+
+		DEV_FOLDER="$(basename "$DEV_SNAPSHOT")"
+		find "$DEV_FOLDER" -xdev -samefile "$BLOCK_FILE"
 	fi
 
 done
