@@ -55,19 +55,24 @@ do_bloinck_backup() {
 		CHUNK_PAD="${PAD:${#CHUNK}}""$CHUNK"
 
 		SUM="$($SSH $MACHINE dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \| $SUMCMD | tr -d ' -')"
-		
-		LZ="$DESTBDEV/$TODAY/$CHUNK_PAD""_""$SUM"".lzma"
-		
-		LAST="$(ls -1t "$DESTBDEV"/*/"$CHUNK_PAD""_""$SUM"".lzma" 2> /dev/null | head -1)"
-		if [ -n "$LAST" ]; then
-			# Hard link if it is identical
-			ln "$LAST" "$LZ"
+	
+		if [ -n "$SUM" ]; then
+			LZ="$DESTBDEV/$TODAY/$CHUNK_PAD""_""$SUM"".lzma"
+			
+			LAST="$(ls -1t "$DESTBDEV"/*/"$CHUNK_PAD""_""$SUM"".lzma" 2> /dev/null | head -1)"
+			if [ -n "$LAST" ]; then
+				# Hard link if it is identical
+				ln "$LAST" "$LZ"
+			else
+				# Transfer the new chunk
+				$SSH $MACHINE \
+					dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
+					nice -n 15 $PLZIP $NB_CORES |\
+					dd status=noxfer of="$LZ" bs=5M 2> /dev/null
+			fi
 		else
-			# Transfer the new chunk
-			$SSH $MACHINE \
-				dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
-				nice -n 15 $PLZIP $NB_CORES |\
-				dd status=noxfer of="$LZ" bs=5M 2> /dev/null
+			# If the MACHINE or $1 is not accessible, we end the loop
+			SUM="$SUM_EMPTY"
 		fi
 
 		(( CHUNK ++ ))
