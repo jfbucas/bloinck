@@ -23,6 +23,7 @@ while [ -n "$1" ]; do
 done
 
 
+if [ -e "$DEV_SNAPSHOT"/*".lzma" ]; then
 for BLOCK_FILE in "$DEV_SNAPSHOT"/*".lzma"; do
 
 	F="$(basename "$BLOCK_FILE" ".lzma")"
@@ -52,4 +53,5 @@ for BLOCK_FILE in "$DEV_SNAPSHOT"/*".lzma"; do
 	fi
 
 done
+fi
 
