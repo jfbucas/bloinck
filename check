@@ -1,0 +1,38 @@
+#!/bin/bash
+
+debug() {
+	[ -n "$DEBUG" ] && echo "$*"
+}
+
+SUMCMD='sha256sum'
+
+DEV_SNAPSHOT="$1"
+if [ ! -d "$DEV_SNAPSHOT" ]; then
+	echo "Cannot check un-existing snapshot"
+	exit 1
+fi
+
+
+for BLOCK_FILE in "$DEV_SNAPSHOT"/*; do
+
+	F="$(basename "$BLOCK_FILE" ".lzma")"
+	FILE_PAD="${F%%_*}"
+	FILE_SUM="${F##*_}"
+
+	ERROR=""
+	if [ -z "$FILE_PAD" ]; then ERROR="$ERROR No File Pad"; fi
+	if [ -z "$FILE_SUM" ]; then ERROR="$ERROR No File Sum"; fi
+
+	if [ -z "$ERROR" ]; then
+		SUM="$(dd status=noxfer if="$BLOCK_FILE" bs=5M 2> /dev/null |\
+			plzip -d -c | $SUMCMD | tr -d ' -')"
+
+		if [ "$SUM" != "$FILE_SUM" ]; then ERROR="$ERROR No File Sum"; fi
+	fi
+
+	if [ -z "$ERROR" ]; then
+		echo "$BLOCK_FILE - $ERROR"
+	fi
+
+done
+
