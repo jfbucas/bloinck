@@ -53,5 +53,7 @@ for BLOCK_FILE in "$DEV_SNAPSHOT"/*".lzma"; do
 	fi
 
 done
+else
+	echo "Cannot check un-existing snapshot files"
 fi
 
