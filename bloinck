@@ -7,6 +7,20 @@
 # Version 0.1 - Jef Bucas 2013-03-21 
 # Version 0.2 - Jef Bucas 2014-08-29 
 
+# To enable multiplexing do the following:
+#
+# In a shell:
+# $ mkdir -p ~/.ssh/connections
+# $ chmod 700 ~/.ssh/connections
+#
+# Add this to your ~/.ssh/config file:
+#
+#  Host *
+#  ControlMaster auto
+#  ControlPath ~/.ssh/connections/%r_%h_%p
+#  ControlPersist 10m
+
+
 SCRIPTDIR="$(dirname "$0")"
 cd "$SCRIPTDIR"
 
