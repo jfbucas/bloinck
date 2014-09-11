@@ -57,8 +57,10 @@ do_full_backup() {
 # The other backup itself
 # This slices up the DEV in chunks of $SIZE and only zip+transfers if there's a difference with the last backup
 do_bloinck_backup() {
-
-	SUM_EMPTY="$($SSH $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
+	# Establish multiplexing and get empty checksum
+	SSH_MULTIPLEX="$DESTBDEV/ssh_multiplex"
+	SUM_EMPTY="$($SSH -M -S $SSH_MULTIPLEX $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
+	#SUM_EMPTY="$($SSH $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 
 	TODAY="$(date +%Y-%m-%d__%H-%M-%S)"
 	mkdir -p "$DESTBDEV/$TODAY"
@@ -68,7 +70,7 @@ do_bloinck_backup() {
 
 		CHUNK_PAD="${PAD:${#CHUNK}}""$CHUNK"
 
-		SUM="$($SSH $MACHINE dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \| $SUMCMD | tr -d ' -')"
+		SUM="$($SSH -S $SSH_MULTIPLEX $MACHINE dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 	
 		if [ -n "$SUM" ]; then
 			LZ="$DESTBDEV/$TODAY/$CHUNK_PAD""_""$SUM"".lzma"
@@ -79,7 +81,7 @@ do_bloinck_backup() {
 				ln "$LAST" "$LZ"
 			else
 				# Transfer the new chunk
-				$SSH $MACHINE \
+				$SSH -S $SSH_MULTIPLEX $MACHINE \
 					dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
 					nice -n 15 $PLZIP $NB_CORES |\
 					dd status=noxfer of="$LZ" bs=5M 2> /dev/null
@@ -91,6 +93,9 @@ do_bloinck_backup() {
 
 		(( CHUNK ++ ))
 	done
+	
+	# Stop SSH multiplexing
+	$SSH -O stop -S $SSH_MULTIPLEX $MACHINE
 }
 
 
