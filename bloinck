@@ -6,19 +6,7 @@
 #
 # Version 0.1 - Jef Bucas 2013-03-21 
 # Version 0.2 - Jef Bucas 2014-08-29 
-
-# To enable multiplexing do the following:
-#
-# In a shell:
-# $ mkdir -p ~/.ssh/connections
-# $ chmod 700 ~/.ssh/connections
-#
-# Add this to your ~/.ssh/config file:
-#
-#  Host *
-#  ControlMaster auto
-#  ControlPath ~/.ssh/connections/%r_%h_%p
-#  ControlPersist 10m
+# Version 0.3 - Jef Bucas 2014-09-11 
 
 
 SCRIPTDIR="$(dirname "$0")"
@@ -30,7 +18,7 @@ if [ -z "$@" ]; then
 	exit 1
 fi
 
-BLACK_LIST="$(cat black_list)"
+
 BACKUPDIR="$SCRIPTDIR"
 
 # CMD
@@ -42,9 +30,18 @@ SUMCMD='sha256sum'
 PAD="000000000"
 
 # In Megabytes
-MAX_BLOCK_SIZE="100"
-MIN_BLOCK_SIZE="10"
-SIZE="$MAX_BLOCK_SIZE"
+SIZE="100"
+
+# Local config
+if [ -f "./config" ]; then
+	. ./config
+fi
+
+# Black listing specific devices
+BLACK_LIST=""
+if [ -f "./black_list" ]; then
+	BLACK_LIST="$(cat black_list)"
+fi
 
 
 # The backup itself
