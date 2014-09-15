@@ -1,8 +1,9 @@
 #!/bin/bash
 #
-# This script performs a full backup + LZMA compression of all DIAS Virtual Machines
+# This script performs a full backup + LZMA compression of all Virtual Machines on a specific host
 # it connects to KVM servers with SSH key authentication
-# the keys on the remote hosts are propagated using Puppet
+# it lists the VMs and their attached storage
+# 
 #
 # Version 0.1 - Jef Bucas 2013-03-21 
 # Version 0.2 - Jef Bucas 2014-08-29 
@@ -23,6 +24,7 @@ BACKUPDIR="$SCRIPTDIR"
 
 # CMD
 SSH="ssh -4 -c arcfour"
+SSH_MULTIPLEX_TIMEOUT="3h"
 PLZIP="plzip -3 -q -c -n"
 SUMCMD='sha256sum'
 
@@ -54,10 +56,12 @@ do_full_backup() {
 # The other backup itself
 # This slices up the DEV in chunks of $SIZE and only zip+transfers if there's a difference with the last backup
 do_bloinck_backup() {
-	# Establish multiplexing and get empty checksum
+	# Establish multiplexing 
 	SSH_MULTIPLEX="$DESTBDEV/ssh_multiplex"
-	SUM_EMPTY="$($SSH -M -S $SSH_MULTIPLEX $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
-	#SUM_EMPTY="$($SSH $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
+	$SSH -M -S $SSH_MULTIPLEX -f $MACHINE sleep $SSH_MULTIPLEX_TIMEOUT
+
+	# Get Empty checksum
+	SUM_EMPTY="$($SSH -S $SSH_MULTIPLEX $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 
 	TODAY="$(date +%Y-%m-%d__%H-%M-%S)"
 	mkdir -p "$DESTBDEV/$TODAY"
@@ -72,7 +76,9 @@ do_bloinck_backup() {
 		if [ -n "$SUM" ]; then
 			LZ="$DESTBDEV/$TODAY/$CHUNK_PAD""_""$SUM"".lzma"
 			
-			LAST="$(ls -1t "$DESTBDEV"/*/"$CHUNK_PAD""_""$SUM"".lzma" 2> /dev/null | head -1)"
+			# Find if we already have a CHUNK matching this SUM -- hopefully there won't be any SUM collision
+			#LAST="$(ls -1t "$DESTBDEV"/*/"$CHUNK_PAD""_""$SUM"".lzma" 2> /dev/null | head -1)"
+			LAST="$(find -type f -name "*$SUM*" | head -1)"
 			if [ -n "$LAST" ]; then
 				# Hard link if it is identical
 				ln "$LAST" "$LZ"
@@ -111,7 +117,7 @@ do_block_device() {
 	bsnapshot="$b-snapshot-$(date +%Y-%m-%d__%H-%M-%S)"
 	$SSH $MACHINE lvcreate -s -L10G -n $(basename $bsnapshot) $bdev
 	
-	# Perform a full backup + LZMA compression on the remote host
+	# Perform a backup + LZMA compression on the remote host
 	if [ $? != 0 ]; then
 		# backup of the live block device if for some reason the snapshot is not available
 		do_bloinck_backup $b
