@@ -125,10 +125,15 @@ do_block_device() {
 
 	# Create a snapshot of the block device to avoid FS corruptions
 	bsnapshot="$b-snapshot-$(date +%Y-%m-%d__%H-%M-%S)"
-	$SSH -S $SSH_MULTIPLEX $MACHINE lvcreate -s -L10G -n $(basename $bsnapshot) $bdev > /dev/null
+	LVCREATED="no"
+	LVEXIST="$($SSH -S $SSH_MULTIPLEX $MACHINE which lvcreate)"
+	if [ -n "$LVEXIST" ]; then
+		$SSH -S $SSH_MULTIPLEX $MACHINE lvcreate -s -L10G -n $(basename $bsnapshot) $bdev > /dev/null
+		LVCREATED="$?"
+	fi
 	
 	# Perform a backup + LZMA compression on the remote host
-	if [ $? != 0 ]; then
+	if [ "$LVCREATED" != "0" ]; then
 		# backup of the live block device if for some reason the snapshot is not available
 		do_bloinck_backup $b
 	else
