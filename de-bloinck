@@ -44,10 +44,10 @@ done
 # TODO: we should check that we have all the chuncks before starting to decompress and that they are OK
 # 
 
-if [ -n "$(find . -wholename "$DEV_SNAPSHOT"/*".lzma" )" ]; then
+if [ -n "$( find "$DEV_SNAPSHOT" -wholename "*.lzma" )" ]; then
 
 	if [ -n "$CHECK" ]; then
-		for BLOCK_FILE in $(find . -wholename "$DEV_SNAPSHOT"/*".lzma" | sort ); do
+		for BLOCK_FILE in $( find "$DEV_SNAPSHOT" -wholename "*.lzma" | sort ); do
 			SUM="$($PLDEZIP "$BLOCK_FILE" | $SUMCMD | tr -d ' -')"
 			if [ "${BLOCK_FILE//$SUM/}" == "$BLOCK_FILE" ]; then
 				echo "Verification of $BLOCK_FILE failed, you should run the 'check' script before decompressing" >&2
@@ -56,7 +56,7 @@ if [ -n "$(find . -wholename "$DEV_SNAPSHOT"/*".lzma" )" ]; then
 		done
 	fi
 
-	for BLOCK_FILE in $(find . -wholename "$DEV_SNAPSHOT"/*".lzma" | sort ); do
+	for BLOCK_FILE in $( find "$DEV_SNAPSHOT" -wholename "*.lzma" | sort ); do
 		$PLDEZIP "$BLOCK_FILE"
 	done
 else
