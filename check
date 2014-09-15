@@ -4,17 +4,35 @@ debug() {
 	[ -n "$DEBUG" ] && echo "$*"
 }
 
+usage(){
+	(
+	echo "Usage: $0 [--rename|--delete] machine/block_dev/yyyy-mm-dd__hh-mm-ss/"
+	echo "--rename: rename corrupted chunks (default)"
+	echo "--delete: delete corrupted chunks"
+	# TODO : echo "--replace: with older chunk"
+	# TODO : echo "--replace-zeros: replace with zeros"
+	while [ -n "$1" ]; do
+		echo "$1"
+		shift
+	done
+	) >&2
+
+}
+
+# CMD
+PLDEZIP="plzip -q -c -d "
 SUMCMD='sha256sum'
 DELETE=""
 RENAME="yes"
 
 while [ -n "$1" ]; do
 	case "$1" in
+		"--rename" ) RENAME="yes"; DELETE="" ;;
 		"--delete" ) RENAME=""; DELETE="-delete" ;;
 		* )
 			DEV_SNAPSHOT="$1"
 			if [ ! -d "$DEV_SNAPSHOT" ]; then
-				echo "Cannot check un-existing snapshot"
+				usage "Cannot check un-existing snapshot"
 				exit 1
 			fi
 		;;
@@ -24,36 +42,38 @@ done
 
 
 if [ -n "$( find "$DEV_SNAPSHOT" -name "*.lzma" )" ]; then
-for BLOCK_FILE in "$DEV_SNAPSHOT"/*".lzma"; do
+	for BLOCK_FILE in $(find . -name "$DEV_SNAPSHOT"/*".lzma" | sort ); do
 
-	F="$(basename "$BLOCK_FILE" ".lzma")"
-	FILE_PAD="${F%%_*}"
-	FILE_SUM="${F##*_}"
+		F="$(basename "$BLOCK_FILE" ".lzma")"
+		FILE_PAD="${F%%_*}"
+		FILE_SUM="${F##*_}"
 
-	ERROR=""
-	if [ -z "$FILE_PAD" ]; then ERROR="$ERROR No File Pad"; fi
-	if [ -z "$FILE_SUM" ]; then ERROR="$ERROR No File Sum"; fi
+		ERROR=""
+		if [ -z "$FILE_PAD" ]; then ERROR="$ERROR No File Pad"; fi
+		if [ -z "$FILE_SUM" ]; then ERROR="$ERROR No File Sum"; fi
 
-	if [ -z "$ERROR" ]; then
-		SUM="$(plzip -d -c "$BLOCK_FILE" | $SUMCMD | tr -d ' -')"
+		if [ -z "$ERROR" ]; then
+			SUM="$($PLDEZIP "$BLOCK_FILE" | $SUMCMD | tr -d ' -')"
 
-		if [ "$SUM" != "$FILE_SUM" ]; then ERROR="$ERROR Incorrect Sum"; fi
-	fi
-
-	if [ ! -z "$ERROR" ]; then
-		echo "$BLOCK_FILE - $ERROR"
-
-		if [ -n "$RENAME" ]; then
-			mv "$BLOCK_FILE" "$BLOCK_FILE.incorrect"
-			BLOCK_FILE="$BLOCK_FILE"".incorrect"
+			if [ "$SUM" != "$FILE_SUM" ]; then ERROR="$ERROR Incorrect Sum"; fi
 		fi
 
-		DEV_FOLDER="$(dirname "$DEV_SNAPSHOT")"
-		find "$DEV_FOLDER" -xdev -samefile "$BLOCK_FILE" \! -name "*.lzma.incorrect" $DELETE
-	fi
+		if [ ! -z "$ERROR" ]; then
+			echo "$BLOCK_FILE - $ERROR"
 
-done
+			if [ -n "$RENAME" ]; then
+				mv "$BLOCK_FILE" "$BLOCK_FILE.incorrect"
+				BLOCK_FILE="$BLOCK_FILE"".incorrect"
+			fi
+			if [ -z "$DELETE" ]; then
+				RENAME_ARG="-exec mv \{\} \{\}.incorrect \;"
+			fi
+
+			find . -xdev -samefile "$BLOCK_FILE" \! -name "*.lzma.incorrect" $DELETE $RENAME_ARG
+		fi
+
+	done
 else
-	echo "Cannot check un-existing snapshot files"
+	usage "Cannot check un-existing snapshot files"
 fi
 
