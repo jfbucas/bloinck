@@ -98,7 +98,7 @@ do_bloinck_backup() {
 	done
 	
 	# Stop SSH multiplexing
-	$SSH -O stop -S $SSH_MULTIPLEX $MACHINE
+	$SSH -q -O stop -S $SSH_MULTIPLEX $MACHINE
 }
 
 
@@ -115,7 +115,7 @@ do_block_device() {
 
 	# Create a snapshot of the block device to avoid FS corruptions
 	bsnapshot="$b-snapshot-$(date +%Y-%m-%d__%H-%M-%S)"
-	$SSH $MACHINE lvcreate -s -L10G -n $(basename $bsnapshot) $bdev
+	$SSH $MACHINE lvcreate -s -L10G -n $(basename $bsnapshot) $bdev > /dev/null
 	
 	# Perform a backup + LZMA compression on the remote host
 	if [ $? != 0 ]; then
@@ -126,7 +126,7 @@ do_block_device() {
 		do_bloinck_backup $bsnapshot
 
 		# Remove the snapshot
-		$SSH $MACHINE lvremove -f $bsnapshot
+		$SSH $MACHINE lvremove -f $bsnapshot > /dev/null
 	fi
 }
 
