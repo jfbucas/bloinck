@@ -13,18 +13,11 @@
 SCRIPTDIR="$(dirname "$0")"
 cd "$SCRIPTDIR"
 
-if [ -z "$@" ]; then
-	echo "Please provide the list of KVM host on which to perform the backups"
-	echo "Usage: $0 host1[:kvm] [host2:/dev/sda1] [...]"
-	exit 1
-fi
-
-
 BACKUPDIR="$SCRIPTDIR"
 
 # CMD
 SSH="ssh -4 -c arcfour"
-SSH_MULTIPLEX_TIMEOUT="3h"
+SSH_MULTIPLEX_TIMEOUT="10h"
 PLZIP="plzip -3 -q -c -n"
 SUMCMD='sha256sum'
 
@@ -45,11 +38,36 @@ if [ -f "./black_list" ]; then
 	BLACK_LIST="$(cat black_list)"
 fi
 
+# Parameters
+ALL_HOSTS=""
+while [ -n "$1" ]; do
+	case "$1" in
+		"-g" | "--group" )
+			if [ -z "${GROUPS[$2]}" ]; then
+				echo "Group $2 is not defined. Please look into your config file"
+				exit 1
+			fi
+			ALL_HOSTS="$ALL_HOSTS ""${GROUPS[$2]}"
+			shift
+			;;
+		* )
+			ALL_HOSTS="$ALL_HOSTS ""$1"
+			;;
+	esac
+	shift
+done
+
+if [ -z "$ALL_HOSTS" ]; then
+	echo "Please provide the list of KVM host on which to perform the backups"
+	echo "Usage: $0 [--group name1] host1[:kvm] [host2:/dev/sda1] [...]"
+	exit 1
+fi
+
 
 do_ssh_multiplex() {
 	SSH_MULTIPLEX="$MACHINE/ssh_multiplex"
 	# Establish multiplexing 
-	$SSH -M -S $SSH_MULTIPLEX -f $MACHINE sleep $SSH_MULTIPLEX_TIMEOUT
+	$SSH -M -S $SSH_MULTIPLEX -f $MACHINE sleep $SSH_MULTIPLEX_TIMEOUT 2> /dev/null > /dev/null
 	
 	# |CPUs| -1 (to leave some room for the VMs
 	NB_CORES="$($SSH -S $SSH_MULTIPLEX $MACHINE cat /proc/cpuinfo | grep processor | tail -1 | tr -d '[a-z: \t]')"
@@ -58,7 +76,7 @@ do_ssh_multiplex() {
 undo_ssh_multiplex() {
 	if [ -e "$SSH_MULTIPLEX" ]; then
 		# Stop SSH multiplexing
-		$SSH -q -O stop -S $SSH_MULTIPLEX $MACHINE
+		$SSH -q -O stop -S $SSH_MULTIPLEX $MACHINE 2> /dev/null > /dev/null
 	fi
 }
 
@@ -180,7 +198,7 @@ do_virtual_machines() {
 
 
 # Loop through all the hosts provided
-for HOST in $@; do
+for HOST in $ALL_HOSTS; do
 
 	(
 
@@ -191,9 +209,8 @@ for HOST in $@; do
 	[ $? != 0 ] && echo "Skipping unpingable $MACHINE" && continue
 
 
-
 	case $MACHINEBLOCK in
-		"" | "kvm" )
+		"" | "$MACHINE" | "kvm" )
 			do_virtual_machines
 			;;
 
