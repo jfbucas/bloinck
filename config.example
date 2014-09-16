@@ -1,0 +1,36 @@
+#
+# Config example
+#
+#
+# Specify a different size for the chunks
+#SIZE="10"
+
+# Destination folder for storing information
+#BACKUPDIR="/different/path"
+
+# SSH command to connect to the hosts
+#SSH="ssh -4 -c arcfour"
+
+# SSH timeout for Controler
+#SSH_MULTIPLEX_TIMEOUT="10h"
+
+# Compression command
+#PLZIP="plzip -3 -q -c -n"
+
+# Checksum algorithm
+#SUMCMD='sha256sum'
+
+# default PADding for device blocks
+#PAD="000000000"
+
+# Groups
+# Example of group list generation
+#domain="bloinck.ie"
+#for branch in site1 site2 site3; do
+#	eval group_$branch=""
+#	for i in {1..9}; do
+#		eval "group_$branch=\"\$group_$branch\"\"kvm$i.$branch.$domain"" "\"
+#		done
+#	done
+#done
+

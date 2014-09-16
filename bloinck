@@ -44,11 +44,12 @@ ALL_HOSTS=""
 while [ -n "$1" ]; do
 	case "$1" in
 		"-g" | "--group" )
-			if [ -z "${LISTS["$2"]}" ]; then
+			list="$(eval echo \$group_$2)"
+			if [ -z "$list" ]; then
 				echo "Group $2 is not defined. Please look into your config file"
 				exit 1
 			fi
-			ALL_HOSTS="$ALL_HOSTS ""${LISTS["$2"]}"
+			ALL_HOSTS="$ALL_HOSTS ""$list"
 			shift
 			;;
 		* )
