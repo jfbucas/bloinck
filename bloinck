@@ -114,6 +114,7 @@ do_bloinck_backup() {
 					dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
 					nice -n 15 $PLZIP $NB_CORES |\
 					dd status=noxfer of="$LZ" bs=5M 2> /dev/null
+				# TODO: add an extra step with $LZ.tmp
 			fi
 		else
 			# If the MACHINE or $1 is not accessible, we end the loop
