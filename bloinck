@@ -9,8 +9,6 @@
 # Version 0.2 - Jef Bucas 2014-08-29 
 # Version 0.3 - Jef Bucas 2014-09-11 
 
-typeset -A  # arrays with string indexes
-
 SCRIPTDIR="$(dirname "$0")"
 cd "$SCRIPTDIR"
 
