@@ -3,7 +3,7 @@
 SCRIPTDIR="$(dirname "$0")"
 cd "$SCRIPTDIR"
 
-for date in  $(ls -1  */*/* | sed -e "s/.*\(20[0-9][0-9]-[01][0-9]-[0-3][0-9]\).*/\1/g" | sort -u); do
+for date in  $(ls -1d  */*/* | sed -e "s/.*\(20[0-9][0-9]-[01][0-9]-[0-3][0-9]\).*/\1/g" | sort -u); do
 	sizes=$(( $(du -sb */*/* | sort -h | grep $date | awk '{ print $1 }' | tr "\n" " " | sed -e "s/ $//g;s/ / + /g" ) ))
 
 	#sizes="$(find -name "*$date*" -printf "%s ")"
