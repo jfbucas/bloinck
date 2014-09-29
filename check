@@ -43,6 +43,7 @@ done
 
 if [ -n "$( find "$DEV_SNAPSHOT" -wholename "*.lzma" )" ]; then
 	for BLOCK_FILE in $( find "$DEV_SNAPSHOT" -wholename "*.lzma" | sort ); do
+		# TODO check the sequence of block numbers for any missing block
 
 		F="$(basename "$BLOCK_FILE" ".lzma")"
 		FILE_PAD="${F%%_*}"
