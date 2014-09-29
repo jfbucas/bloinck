@@ -88,6 +88,8 @@ undo_ssh_multiplex() {
 do_bloinck_backup() {
 	# Get Empty checksum
 	SUM_EMPTY="$($SSH -S $SSH_MULTIPLEX $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
+	# Get Zero checksum
+	SUM_ZERO="$($SSH -S $SSH_MULTIPLEX $MACHINE dd if=/dev/zero bs="$SIZE""M" count=1 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 
 	TODAY="$(date +%Y-%m-%d__%H-%M-%S)"
 	mkdir -p "$DESTBDEV/$TODAY"
@@ -106,8 +108,14 @@ do_bloinck_backup() {
 			#LAST="$(ls -1t "$DESTBDEV"/*/"$CHUNK_PAD""_""$SUM"".lzma" 2> /dev/null | head -1)"
 			LAST="$(find . -type f -name "*$SUM"".lzma" | head -1)"
 			if [ -n "$LAST" ]; then
-				# Hard link if it is identical
-				ln "$LAST" "$LZ"
+
+				if [ "$SUM" == "$SUM_ZERO" ]; then
+					# Copy the file to avoid over use of Hard Links in the zero case
+					cp "$LAST" "$LZ"
+				else
+					# Hard link if it is identical
+					ln "$LAST" "$LZ"
+				fi
 			else
 				# Transfer the new chunk
 				$SSH -S $SSH_MULTIPLEX $MACHINE \
