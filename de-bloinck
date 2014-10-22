@@ -24,11 +24,21 @@ SUMCMD='sha256sum'
 CHECK="yes"
 DEV_SNAPSHOT=""
 
+# In Megabytes
+SIZE="100"
+
+# Local config
+if [ -f "./config" ]; then
+	. ./config
+fi
+
+
 while [ -n "$1" ]; do
 
 	case "$1" in
 		"-c" | "--check" )	CHECK="yes";;
 		"-nc" | "--no-check" )	CHECK="";;
+		"--nodezip" )	PLDEZIP="tee";;
 		* )
 		DEV_SNAPSHOT="$1"
 		if [ ! -d "$DEV_SNAPSHOT" ]; then
@@ -57,8 +67,9 @@ if [ -n "$( find "$DEV_SNAPSHOT" -wholename "*.lzma" )" ]; then
 	fi
 
 	for BLOCK_FILE in $( find "$DEV_SNAPSHOT" -wholename "*.lzma" | sort ); do
-		$PLDEZIP "$BLOCK_FILE"
-	done
+		#$PLDEZIP "$BLOCK_FILE"
+		dd if="$BLOCK_FILE" bs="$SIZE""M"
+	done | $PLDEZIP
 else
 	usage "Cannot de-bloinck un-existing snapshot files"
 fi
