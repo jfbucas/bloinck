@@ -109,8 +109,8 @@ do_bloinck_backup() {
 			LAST="$(find . -type f -name "*$SUM"".lzma" | head -1)"
 			if [ -n "$LAST" ]; then
 
-				if [ "$SUM" == "$SUM_ZERO" ]; then
-					# Copy the file to avoid over use of Hard Links in the zero case
+				if [ "$SUM" == "$SUM_ZERO" -o "$SUM" == "$SUM_EMPTY" ]; then
+					# Copy the file to avoid over use of Hard Links in the zero case or the empty case
 					cp "$LAST" "$LZ"
 				else
 					# Hard link if it is identical
