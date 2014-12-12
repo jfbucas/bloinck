@@ -108,7 +108,7 @@ do_bloinck_backup() {
 			# We search first in the machine's previous backups
 			#LAST="$(ls -1t "$DESTBDEV"/*/"$CHUNK_PAD""_""$SUM"".lzma" 2> /dev/null | head -1)"
 			LAST="$(find "$DESTBDEV" -type f -name "*$SUM"".lzma" | head -1)"
-			if [ -n "$LAST" ]; then
+			if [ -z "$LAST" ]; then
 				# if nothing is found, we look into the whole scope of all the backups
 				LAST="$(find . -type f -name "*$SUM"".lzma" | head -1)"
 			fi
