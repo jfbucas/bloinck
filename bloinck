@@ -107,6 +107,7 @@ do_bloinck_backup() {
 			# Find if we already have a CHUNK matching this SUM -- hopefully there won't be any SUM collision
 			# We search first in the machine's previous backups
 			#LAST="$(ls -1t "$DESTBDEV"/*/"$CHUNK_PAD""_""$SUM"".lzma" 2> /dev/null | head -1)"
+			# We could use a cache with something like: find . -type f -name *.lzma | sed -e "s/.*_\([0-9a-f]*\).lzma/\1/g"
 			LAST="$(find "$DESTBDEV" -type f -name "*$SUM"".lzma" | head -1)"
 			if [ -z "$LAST" ]; then
 				# if nothing is found, we look into the whole scope of all the backups
