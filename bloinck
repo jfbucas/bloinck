@@ -87,16 +87,18 @@ undo_ssh_multiplex() {
 # This slices up the DEV in chunks of $SIZE and only zip+transfers if there's a difference with the last backup
 do_bloinck_backup() {
 
-	# First we build a local_cache file with all known hashes for the DEV
+	# Create destination directory
+	TODAY="$(date +%Y-%m-%d__%H-%M-%S)"
 	mkdir -p "$DESTBDEV/$TODAY"
-	find "$DESTBDEV" -type f -name "*.lzma" > "$DESTDEV"/.local_cache
+
+	# First we build a local_cache file with all known hashes for the DEV
+	find "$DESTBDEV" -type f -name "*.lzma" > "$DESTBDEV"/.local_cache
 
 	# Get Empty checksum
 	SUM_EMPTY="$($SSH -S $SSH_MULTIPLEX $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 	# Get Zero checksum
 	SUM_ZERO="$($SSH -S $SSH_MULTIPLEX $MACHINE dd if=/dev/zero bs="$SIZE""M" count=1 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 
-	TODAY="$(date +%Y-%m-%d__%H-%M-%S)"
 	CHUNK=0
 	SUM=""
 	while [ "$SUM" != "$SUM_EMPTY" ]; do
@@ -134,7 +136,7 @@ do_bloinck_backup() {
 					dd status=noxfer of="$LZ"".tmp" bs=5M 2> /dev/null
 
 				# We check what we transfered
-				SUMTRANSFERED="$(dd status=noxfer if="$LZ"".tmp" 2\> /dev/null \| $SUMCMD | tr -d ' -')"
+				SUMTRANSFERED="$(dd status=noxfer if="$LZ"".tmp" 2> /dev/null | $SUMCMD | tr -d ' -')"
 
 				if [ "$SUM" == "$SUMTRANSFERED" ]; then
 					mv "$LZ"".tmp" "$LZ"
