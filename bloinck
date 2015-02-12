@@ -88,6 +88,7 @@ undo_ssh_multiplex() {
 do_bloinck_backup() {
 
 	# First we build a local_cache file with all known hashes for the DEV
+	mkdir -p "$DESTBDEV/$TODAY"
 	find "$DESTBDEV" -type f -name "*.lzma" > "$DESTDEV"/.local_cache
 
 	# Get Empty checksum
@@ -96,7 +97,6 @@ do_bloinck_backup() {
 	SUM_ZERO="$($SSH -S $SSH_MULTIPLEX $MACHINE dd if=/dev/zero bs="$SIZE""M" count=1 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 
 	TODAY="$(date +%Y-%m-%d__%H-%M-%S)"
-	mkdir -p "$DESTBDEV/$TODAY"
 	CHUNK=0
 	SUM=""
 	while [ "$SUM" != "$SUM_EMPTY" ]; do
