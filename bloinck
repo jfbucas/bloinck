@@ -32,6 +32,10 @@ if [ -f "./config" ]; then
 	. ./config
 fi
 
+# Get the hash length
+HASHLENGTH="$(echo | $SUMCMD | tr -d " -" | wc -c )"
+HASHLENGTH="$(($HASHLENGTH - 1 ))"
+
 # Black listing specific devices
 BLACK_LIST=""
 if [ -f "./black_list" ]; then
@@ -118,7 +122,10 @@ do_bloinck_backup() {
 			if [ -z "$LAST" ]; then
 				# if nothing is found, we look into the whole scope of all the backups
 				#LAST="$(find . -type f -name "*$SUM"".lzma" | head -1)"
-				LAST="$(grep "$SUM" .global_cache | head -1)"
+				LAST="$(grep "$SUM" .global_cache_uniq_hashes | head -1)"
+				if [ -n "$LAST" ]; then
+					LAST="$(grep "$SUM" .global_cache | head -1)"
+				fi
 			fi
 			if [ -n "$LAST" ]; then
 
@@ -145,6 +152,8 @@ do_bloinck_backup() {
 					mkdir -p "failed/"
 					ln -s -f "$LZ"".tmp" "failed/"
 				fi
+
+				# TODO : add the new SUM and new file into the cache files
 			fi
 		else
 			# If the MACHINE or $1 is not accessible, we end the loop
@@ -229,6 +238,9 @@ do_virtual_machines() {
 
 # First we build a global_cache file with all known hashes
 find -type f -name "*.lzma" > .global_cache
+
+# And we list all the uniq hashes to speed up the search process
+rev .global_cache | cut -c6-$((6 + $HASHLENGTH - 1)) | rev | sort -u > .global_cache_uniq_hashes
 
 
 # Loop through all the hosts provided
