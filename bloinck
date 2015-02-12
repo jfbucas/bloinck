@@ -86,6 +86,10 @@ undo_ssh_multiplex() {
 # The backup itself
 # This slices up the DEV in chunks of $SIZE and only zip+transfers if there's a difference with the last backup
 do_bloinck_backup() {
+
+	# First we build a local_cache file with all known hashes for the DEV
+	find "$DESTBDEV" -type f -name "*.lzma" > "$DESTDEV"/.local_cache
+
 	# Get Empty checksum
 	SUM_EMPTY="$($SSH -S $SSH_MULTIPLEX $MACHINE dd if=/dev/null 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 	# Get Zero checksum
@@ -106,12 +110,12 @@ do_bloinck_backup() {
 			
 			# Find if we already have a CHUNK matching this SUM -- hopefully there won't be any SUM collision
 			# We search first in the machine's previous backups
-			#LAST="$(ls -1t "$DESTBDEV"/*/"$CHUNK_PAD""_""$SUM"".lzma" 2> /dev/null | head -1)"
-			# We could use a cache with something like: find . -type f -name *.lzma | sed -e "s/.*_\([0-9a-f]*\).lzma/\1/g"
-			LAST="$(find "$DESTBDEV" -type f -name "*$SUM"".lzma" | head -1)"
+			#LAST="$(find "$DESTBDEV" -type f -name "*$SUM"".lzma" | head -1)"
+			LAST="$(grep "$SUM" "$DESTBDEV"/.local_cache | head -1)"
 			if [ -z "$LAST" ]; then
 				# if nothing is found, we look into the whole scope of all the backups
-				LAST="$(find . -type f -name "*$SUM"".lzma" | head -1)"
+				#LAST="$(find . -type f -name "*$SUM"".lzma" | head -1)"
+				LAST="$(grep "$SUM" .global_cache | head -1)"
 			fi
 			if [ -n "$LAST" ]; then
 
@@ -127,8 +131,17 @@ do_bloinck_backup() {
 				$SSH -S $SSH_MULTIPLEX $MACHINE \
 					dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
 					nice -n 15 $PLZIP $NB_CORES |\
-					dd status=noxfer of="$LZ" bs=5M 2> /dev/null
-				# TODO: add an extra step with $LZ.tmp
+					dd status=noxfer of="$LZ"".tmp" bs=5M 2> /dev/null
+
+				# We check what we transfered
+				SUMTRANSFERED="$(dd status=noxfer if="$LZ"".tmp" 2\> /dev/null \| $SUMCMD | tr -d ' -')"
+
+				if [ "$SUM" == "$SUMTRANSFERED" ]; then
+					mv "$LZ"".tmp" "$LZ"
+				else
+					mkdir -p "failed/"
+					ln -s "$LZ"".tmp" "failed/"
+				fi
 			fi
 		else
 			# If the MACHINE or $1 is not accessible, we end the loop
@@ -210,6 +223,9 @@ do_virtual_machines() {
 	undo_ssh_multiplex
 
 }
+
+# First we build a global_cache file with all known hashes
+find -type f -name "*.lzma" > .global_cache
 
 
 # Loop through all the hosts provided
