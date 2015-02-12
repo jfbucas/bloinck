@@ -18,6 +18,7 @@ BACKUPDIR="$SCRIPTDIR"
 SSH="ssh -4 -c arcfour"
 SSH_MULTIPLEX_TIMEOUT="10h"
 PLZIP="plzip -3 -q -c -n"
+PLDEZIP="plzip -q -c -d "
 SUMCMD='sha256sum'
 
 # PAD for device blocks
@@ -136,13 +137,13 @@ do_bloinck_backup() {
 					dd status=noxfer of="$LZ"".tmp" bs=5M 2> /dev/null
 
 				# We check what we transfered
-				SUMTRANSFERED="$(dd status=noxfer if="$LZ"".tmp" 2> /dev/null | $SUMCMD | tr -d ' -')"
+				SUMTRANSFERED="$(dd status=noxfer if="$LZ"".tmp" 2> /dev/null | $PLDEZIP | $SUMCMD | tr -d ' -')"
 
 				if [ "$SUM" == "$SUMTRANSFERED" ]; then
 					mv "$LZ"".tmp" "$LZ"
 				else
 					mkdir -p "failed/"
-					ln -s "$LZ"".tmp" "failed/"
+					ln -s -f "$LZ"".tmp" "failed/"
 				fi
 			fi
 		else

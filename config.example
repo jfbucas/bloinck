@@ -14,8 +14,9 @@
 # SSH timeout for Controler
 #SSH_MULTIPLEX_TIMEOUT="10h"
 
-# Compression command
+# (de)Compression commands
 #PLZIP="plzip -3 -q -c -n"
+#PLDEZIP="plzip -q -c -d "
 
 # Checksum algorithm
 #SUMCMD='sha256sum'
