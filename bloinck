@@ -105,7 +105,7 @@ do_bloinck_backup() {
 	SUM_ZERO="$($SSH -S $SSH_MULTIPLEX $MACHINE dd if=/dev/zero bs="$SIZE""M" count=1 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 
 	# Setup RAM FS on the remote
-	$SSH -S $SSH_MULTIPLEX $MACHINE "mkdir /tmp/bloinck; mount -t tmpfs -o size=$SIZE none /tmp/bloinck; touch /tmp/bloinck/data; chmod 600 /tmp/bloinck/data"
+	$SSH -S $SSH_MULTIPLEX $MACHINE "mkdir /tmp/bloinck; mount -t tmpfs -o size=$SIZE""M"" none /tmp/bloinck; touch /tmp/bloinck/data; chmod 600 /tmp/bloinck/data"
 
 
 	CHUNK=0
