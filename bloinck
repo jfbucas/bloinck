@@ -104,13 +104,17 @@ do_bloinck_backup() {
 	# Get Zero checksum
 	SUM_ZERO="$($SSH -S $SSH_MULTIPLEX $MACHINE dd if=/dev/zero bs="$SIZE""M" count=1 2\> /dev/null \| $SUMCMD | tr -d ' -')"
 
+	# Setup RAM FS on the remote
+	$SSH -S $SSH_MULTIPLEX $MACHINE "mkdir /tmp/bloinck; mount -t tmpfs -o size=$SIZE none /tmp/bloinck; touch /tmp/bloinck/data; chmod 600 /tmp/bloinck/data"
+
+
 	CHUNK=0
 	SUM=""
 	while [ "$SUM" != "$SUM_EMPTY" ]; do
 
 		CHUNK_PAD="${PAD:${#CHUNK}}""$CHUNK"
 
-		SUM="$($SSH -S $SSH_MULTIPLEX $MACHINE dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \| $SUMCMD | tr -d ' -')"
+		SUM="$($SSH -S $SSH_MULTIPLEX $MACHINE dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \| tee /tmp/bloinck/data | $SUMCMD | tr -d ' -')"
 	
 		if [ -n "$SUM" ]; then
 			LZ="$DESTBDEV/$TODAY/$CHUNK_PAD""_""$SUM"".lzma"
@@ -139,7 +143,7 @@ do_bloinck_backup() {
 			else
 				# Transfer the new chunk
 				$SSH -S $SSH_MULTIPLEX $MACHINE \
-					dd status=noxfer if="$1" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
+					dd status=noxfer if="/tmp/bloinck/data" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
 					nice -n 15 $PLZIP $NB_CORES |\
 					dd status=noxfer of="$LZ"".tmp" bs=5M 2> /dev/null
 
@@ -162,6 +166,9 @@ do_bloinck_backup() {
 
 		(( CHUNK ++ ))
 	done
+
+	# Un-Setup RAM fs on the remote
+	$SSH -S $SSH_MULTIPLEX $MACHINE "umount /tmp/bloinck; rm -f /tmp/bloinck/data; rmdir /tmp/bloinck"
 	
 }
 
