@@ -143,7 +143,7 @@ do_bloinck_backup() {
 			else
 				# Transfer the new chunk
 				$SSH -S $SSH_MULTIPLEX $MACHINE \
-					dd status=noxfer if="/tmp/bloinck/data" bs="$SIZE""M" count=1 skip="$CHUNK" 2\> /dev/null \|\
+					dd status=noxfer if="/tmp/bloinck/data" bs="$SIZE""M" count=1 2\> /dev/null \|\
 					nice -n 15 $PLZIP $NB_CORES |\
 					dd status=noxfer of="$LZ"".tmp" bs=5M 2> /dev/null
 
