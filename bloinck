@@ -20,6 +20,7 @@ SSH_MULTIPLEX_TIMEOUT="10h"
 PLZIP="plzip -3 -q -c -n"
 PLDEZIP="plzip -q -c -d "
 SUMCMD='sha256sum'
+SKIP_CACHE=""
 
 # PAD for device blocks
 PAD="000000000"
@@ -46,6 +47,8 @@ fi
 ALL_HOSTS=""
 while [ -n "$1" ]; do
 	case "$1" in
+		"-s" | "--skip-cache" )
+			SKIP_CACHE="yes";;
 		"-g" | "--group" )
 			list="$(eval echo \$group_$2)"
 			if [ -z "$list" ]; then
@@ -243,11 +246,14 @@ do_virtual_machines() {
 
 }
 
-# First we build a global_cache file with all known hashes
-find -type f -name "*.lzma" > .global_cache
+# Build up the cache
+if [ -z "$SKIP_CACHE" ]; then
+	# First we build a global_cache file with all known hashes
+	find -type f -name "*.lzma" > .global_cache
 
-# And we list all the uniq hashes to speed up the search process
-rev .global_cache | cut -c6-$((6 + $HASHLENGTH - 1)) | rev | sort -u > .global_cache_uniq_hashes
+	# And we list all the uniq hashes to speed up the search process
+	rev .global_cache | cut -c6-$((6 + $HASHLENGTH - 1)) | rev | sort -u > .global_cache_uniq_hashes
+fi
 
 
 # Loop through all the hosts provided
